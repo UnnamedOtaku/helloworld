@@ -6,11 +6,13 @@ find_package(OpenGL REQUIRED)
 find_package(glad REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
+find_package(Stb REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
 
 file(GLOB SOURCES "src/*.cpp")
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES}
+	src/stb_image.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/build/debug"
@@ -25,7 +27,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 	VERBATIM
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR} include)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glad::glad glfw glm::glm ${OPENGL_LIBRARIES} gdi32 winmm)
 
