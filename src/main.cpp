@@ -54,7 +54,10 @@ int main()
         0, 1, 2
     };
 
-    Shader shaderProgram("assets/shaders/default.vert", "assets/shaders/default.frag");
+    Shader shaderProgram;
+    shaderProgram.add("assets/shaders/default.vert", GL_VERTEX_SHADER);
+    shaderProgram.add("assets/shaders/default.frag", GL_FRAGMENT_SHADER);
+    shaderProgram.link();
 
     GLuint VBO, VAO, EBO;
     glGenBuffers(1, &VBO);
@@ -89,11 +92,6 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         
         shaderProgram.use();
-
-        float timeValue = glfwGetTime();
-        float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
-        int vertexColorLocation = glGetUniformLocation(shaderProgram.ID, "ourColor");
-        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
