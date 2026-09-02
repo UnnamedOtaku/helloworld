@@ -1,9 +1,6 @@
 #include "Shader.h"
 
-Shader::Shader() : ID(0), linked(false)
-{
-    ID = glCreateProgram();
-}
+Shader::Shader() : ID(0), linked(false) {}
 
 Shader::~Shader()
 {
@@ -37,7 +34,6 @@ void Shader::addFromString(const std::string &source, GLenum shaderType)
     if( shader != 0 )
     {
         shaders.push_back(shader);
-        glAttachShader(ID, shader);
     }
 }
 
@@ -127,6 +123,13 @@ bool Shader::link()
         << "ERROR::PROGRAM::NO_SHADER_ATTACHED"
         << std::endl;
         return false;
+    }
+
+    ID = glCreateProgram();
+
+    for( GLuint shader : shaders )
+    {
+        glAttachShader(ID, shader);
     }
 
     glLinkProgram(ID);

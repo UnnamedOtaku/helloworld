@@ -74,4 +74,4 @@ vcpkg.json
 Testing/
 .cache/
 
-*.old
+*.old.*
