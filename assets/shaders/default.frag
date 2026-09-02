@@ -31,16 +31,15 @@ void main()
     
     // ----- (OPCIONAL) ESPECULAR (Blinn-Phong) -----
     // Si quieres brillos, descomenta esto:
-    /*
     float specularStrength = 0.5;
     vec3 viewDir = normalize(viewPos - vertexPos);
     vec3 halfDir = normalize(lightDir + viewDir);
     float spec = pow(max(dot(normal, halfDir), 0.0), 32);
     vec3 specular = specularStrength * spec * lightColor;
-    */
+
     
     // ----- COMBINAR ILUMINACIÓN -----
-    vec3 lighting = ambient + diffuse; // + specular (si lo descomentas)
+    vec3 lighting = ambient + diffuse + specular;
     
     // ----- OBTENER COLOR DE TEXTURA -----
     vec4 texColor = texture(Texture, TexCoord);

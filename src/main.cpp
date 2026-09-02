@@ -30,6 +30,8 @@ float pitch =  0.0f;
 float lastX = 400, lastY = 300;
 float fov   =  45.0f;
 
+bool showNormals = true;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
@@ -75,6 +77,12 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
         fov = 1.0f;
     if (fov > 45.0f)
         fov = 45.0f;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_N && action == GLFW_PRESS)
+        showNormals = !showNormals;
 }
 
 void processInput(GLFWwindow *window)
@@ -223,14 +231,22 @@ int main()
     generateSphereSmooth(1.0f, 20, 15, sphereVert, sphereIdx);
 
     Shader shaderProgram;
-    shaderProgram.add("assets/shaders/default_vert.glsl", GL_VERTEX_SHADER);
-    shaderProgram.add("assets/shaders/default_frag.glsl", GL_FRAGMENT_SHADER);
+    shaderProgram.add("assets/shaders/default.vert", GL_VERTEX_SHADER);
+    shaderProgram.add("assets/shaders/default.frag", GL_FRAGMENT_SHADER);
+    shaderProgram.add("assets/shaders/default.geom", GL_GEOMETRY_SHADER);
     shaderProgram.link();
 
     Shader lightShaderProgram;
-    lightShaderProgram.add("assets/shaders/default_vert.glsl", GL_VERTEX_SHADER);
-    lightShaderProgram.add("assets/shaders/light_frag.glsl", GL_FRAGMENT_SHADER);
+    lightShaderProgram.add("assets/shaders/default.vert", GL_VERTEX_SHADER);
+    lightShaderProgram.add("assets/shaders/light.frag", GL_FRAGMENT_SHADER);
+    lightShaderProgram.add("assets/shaders/default.geom", GL_GEOMETRY_SHADER);
     lightShaderProgram.link();
+
+    Shader normalShaderProgram;
+    normalShaderProgram.add("assets/shaders/default.vert", GL_VERTEX_SHADER);
+    normalShaderProgram.add("assets/shaders/normal.frag", GL_FRAGMENT_SHADER);
+    normalShaderProgram.add("assets/shaders/normal.geom", GL_GEOMETRY_SHADER);
+    normalShaderProgram.link();
 
     GLuint VBO, VAO, EBO;
     glGenBuffers(1, &VBO);
@@ -315,6 +331,7 @@ int main()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
     glfwSetCursorPosCallback(window, mouse_callback);  
     glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
     // ============ FRAME COUNTER ============
     int frameCount = 0;
     double currentTime = glfwGetTime();
@@ -371,6 +388,24 @@ int main()
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(sphereIdx.size()), GL_UNSIGNED_INT, 0);
+
+        if (showNormals) {
+            normalShaderProgram.use();
+            normalShaderProgram.setMat4("model", model);
+            normalShaderProgram.setMat4("view", view);
+            normalShaderProgram.setMat4("proj", proj);
+
+            glBindVertexArray(VAO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(sphereIdx.size()), GL_UNSIGNED_INT, 0);
+
+            normalShaderProgram.setMat4("model", groundModel);
+            glBindVertexArray(groundVAO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(groundIdx.size()), GL_UNSIGNED_INT, 0);
+
+            normalShaderProgram.setMat4("model", lightModel);
+            glBindVertexArray(VAO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(sphereIdx.size()), GL_UNSIGNED_INT, 0);
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
