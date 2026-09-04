@@ -30,6 +30,8 @@ float pitch =  0.0f;
 float lastX = 400, lastY = 300;
 float fov   =  45.0f;
 
+float tessellationLevel = 4.0f;
+
 bool showNormals = true;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -83,6 +85,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_N && action == GLFW_PRESS)
         showNormals = !showNormals;
+
+    if (key == GLFW_KEY_T && action == GLFW_PRESS)
+    {
+        tessellationLevel += 1.0f;
+        if (tessellationLevel > 64.0f)
+            tessellationLevel = 64.0f;
+    }
+
+    if (key == GLFW_KEY_G && action == GLFW_PRESS)
+    {
+        tessellationLevel -= 1.0f;
+        if (tessellationLevel < 1.0f)
+            tessellationLevel = 1.0f;
+    }
 }
 
 void processInput(GLFWwindow *window)
@@ -191,8 +207,8 @@ void generateSphereSmooth(
 int main()
 {
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
@@ -228,7 +244,7 @@ int main()
         0, 2, 3
     };
 
-    generateSphereSmooth(1.0f, 20, 15, sphereVert, sphereIdx);
+    generateSphereSmooth(1.0f, 12, 8, sphereVert, sphereIdx);
 
     Shader shaderProgram;
     shaderProgram.add("assets/shaders/default.vert", GL_VERTEX_SHADER);
@@ -236,10 +252,18 @@ int main()
     shaderProgram.add("assets/shaders/default.geom", GL_GEOMETRY_SHADER);
     shaderProgram.link();
 
+    Shader sphereShaderProgram;
+    sphereShaderProgram.add("assets/shaders/sphere.vert", GL_VERTEX_SHADER);
+    sphereShaderProgram.add("assets/shaders/sphere.tesc", GL_TESS_CONTROL_SHADER);
+    sphereShaderProgram.add("assets/shaders/sphere.tese", GL_TESS_EVALUATION_SHADER);
+    sphereShaderProgram.add("assets/shaders/default.frag", GL_FRAGMENT_SHADER);
+    sphereShaderProgram.link();
+
     Shader lightShaderProgram;
-    lightShaderProgram.add("assets/shaders/default.vert", GL_VERTEX_SHADER);
+    lightShaderProgram.add("assets/shaders/sphere.vert", GL_VERTEX_SHADER);
+    lightShaderProgram.add("assets/shaders/sphere.tesc", GL_TESS_CONTROL_SHADER);
+    lightShaderProgram.add("assets/shaders/sphere.tese", GL_TESS_EVALUATION_SHADER);
     lightShaderProgram.add("assets/shaders/light.frag", GL_FRAGMENT_SHADER);
-    lightShaderProgram.add("assets/shaders/default.geom", GL_GEOMETRY_SHADER);
     lightShaderProgram.link();
 
     Shader normalShaderProgram;
@@ -305,22 +329,82 @@ int main()
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    GLuint diffuseMap;
+    glGenTextures(1, &diffuseMap);
+    
+    GLuint specularMap;
+    glGenTextures(1, &specularMap);
+    
+    GLuint emissionMap;
+    glGenTextures(1, &emissionMap);
+
     stbi_set_flip_vertically_on_load(true);
 
     int width, height, nrChannels;
-    unsigned char *data = stbi_load("assets/textures/wall.jpg", &width, &height, &nrChannels, 0);
+    unsigned char *data;
+    GLenum format;
+    
+    data = stbi_load("assets/textures/diffuse_0.png", &width, &height, &nrChannels, 0);
 
-    GLuint texture;
-    glGenTextures(1, &texture);
+    if (nrChannels == 1)
+        format = GL_RED;
+    else if (nrChannels == 3)
+        format = GL_RGB;
+    else if (nrChannels == 4)
+        format = GL_RGBA;
 
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindTexture(GL_TEXTURE_2D, diffuseMap);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(data);
+
+
+    data = stbi_load("assets/textures/specular_0.png", &width, &height, &nrChannels, 0);
+
+    if (nrChannels == 1)
+        format = GL_RED;
+    else if (nrChannels == 3)
+        format = GL_RGB;
+    else if (nrChannels == 4)
+        format = GL_RGBA;
+
+    glBindTexture(GL_TEXTURE_2D, specularMap);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(data);
+
+
+    data = stbi_load("assets/textures/emission_0.png", &width, &height, &nrChannels, 0);
+
+    if (nrChannels == 1)
+        format = GL_RED;
+    else if (nrChannels == 3)
+        format = GL_RGB;
+    else if (nrChannels == 4)
+        format = GL_RGBA;
+
+    glBindTexture(GL_TEXTURE_2D, emissionMap);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(data);
@@ -348,6 +432,32 @@ int main()
     lightModel = glm::scale(lightModel, glm::vec3(0.2f, 0.2f, 0.2f));
     groundModel = glm::translate(groundModel, groundPos);
     groundModel = glm::scale(groundModel, glm::vec3(10.0f, 1.0f, 10.0f));
+    
+    sphereShaderProgram.use();
+    sphereShaderProgram.setFloat("radius", 1.0f);
+    sphereShaderProgram.setInt("material.diffuse", 0);
+    sphereShaderProgram.setInt("material.specular", 1);
+    sphereShaderProgram.setInt("material.emission", 2);
+    sphereShaderProgram.setFloat("material.shininess", 64.0f);
+    
+    sphereShaderProgram.setVec3("light.position", lightPos);
+    sphereShaderProgram.setVec3("light.ambient", 0.2f, 0.2f, 0.2f);
+    sphereShaderProgram.setVec3("light.diffuse", 0.5f, 0.5f, 0.5f);
+    sphereShaderProgram.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+
+    shaderProgram.use();
+    shaderProgram.setInt("material.diffuse", 0);
+    shaderProgram.setInt("material.specular", 1);
+    shaderProgram.setInt("material.emission", 2);
+    shaderProgram.setFloat("material.shininess", 64.0f);
+
+    shaderProgram.setVec3("light.position", lightPos);
+    shaderProgram.setVec3("light.ambient", 0.2f, 0.2f, 0.2f);
+    shaderProgram.setVec3("light.diffuse", 0.5f, 0.5f, 0.5f);
+    shaderProgram.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+
+    lightShaderProgram.use();
+    lightShaderProgram.setFloat("radius", 1.0f);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -364,20 +474,41 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+        sphereShaderProgram.use();
+        sphereShaderProgram.setMat4("view", view);
+        sphereShaderProgram.setMat4("proj", proj);
+        sphereShaderProgram.setMat4("model", model);
+        sphereShaderProgram.setVec3("viewPos", cameraPos);
+        sphereShaderProgram.setFloat("tessellationLevel", tessellationLevel);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specularMap);
+
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, emissionMap);
+
+        glPatchParameteri(GL_PATCH_VERTICES, 3);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_PATCHES, static_cast<GLsizei>(sphereIdx.size()), GL_UNSIGNED_INT, 0);
+
         shaderProgram.use();
-        shaderProgram.setInt("Texture", 0);
         shaderProgram.setMat4("view", view);
         shaderProgram.setMat4("proj", proj);
-        shaderProgram.setMat4("model", model);
-        shaderProgram.setVec3("lightPos", lightPos);
+        shaderProgram.setMat4("model", groundModel);
         shaderProgram.setVec3("viewPos", cameraPos);
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(sphereIdx.size()), GL_UNSIGNED_INT, 0);
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
 
-        shaderProgram.setMat4("model", groundModel);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specularMap);
+
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, emissionMap);
+
         glBindVertexArray(groundVAO);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(groundIdx.size()), GL_UNSIGNED_INT, 0);
 
@@ -385,11 +516,13 @@ int main()
         lightShaderProgram.setMat4("model", lightModel);
         lightShaderProgram.setMat4("view", view);
         lightShaderProgram.setMat4("proj", proj);
+        lightShaderProgram.setFloat("tessellationLevel", tessellationLevel);
 
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(sphereIdx.size()), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_PATCHES, static_cast<GLsizei>(sphereIdx.size()), GL_UNSIGNED_INT, 0);
 
-        if (showNormals) {
+        if (showNormals)
+        {
             normalShaderProgram.use();
             normalShaderProgram.setMat4("model", model);
             normalShaderProgram.setMat4("view", view);

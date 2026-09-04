@@ -7,43 +7,47 @@ in vec3 vertexNormal;
 in vec3 vertexColor;
 in vec2 TexCoord;
 
-uniform sampler2D Texture;
+struct Material {
+    sampler2D diffuse;
+    sampler2D specular;
+    sampler2D emission;
+    float shininess;
+};
 
-uniform vec3 lightPos;
+struct Light {
+    vec3 position;
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
 uniform vec3 viewPos;
+  
+uniform Material material;
+uniform Light light;
 
 void main()
 {
-    // ----- CONFIGURACIÓN DE LA LUZ -----
-    vec3 lightColor = vec3(1.0, 1.0, 1.0);
+    // ambient
+    vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoord));
+  	
+    // diffuse 
+    vec3 norm = normalize(vertexNormal);
+    vec3 lightDir = normalize(light.position - vertexPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoord));
     
-    // ----- NORMALIZAR VECTORES -----
-    vec3 normal = normalize(vertexNormal);
-    vec3 lightDir = normalize(lightPos - vertexPos);
-    
-    // ----- ILUMINACIÓN DIFUSA (Lambert) -----
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * lightColor;
-    
-    // ----- LUZ AMBIENTE -----
-    float ambientStrength = 0.2;
-    vec3 ambient = ambientStrength * lightColor;
-    
-    // ----- (OPCIONAL) ESPECULAR (Blinn-Phong) -----
-    // Si quieres brillos, descomenta esto:
-    float specularStrength = 0.5;
+    // specular
     vec3 viewDir = normalize(viewPos - vertexPos);
-    vec3 halfDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * lightColor;
+    vec3 reflectDir = reflect(-lightDir, norm);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoord)); 
 
+    // emission
+    vec3 emission = vec3(texture(material.specular, TexCoord)) == vec3(0.0) ? vec3(texture(material.emission, TexCoord)) : vec3(0.0);
+        
+    vec3 result = ambient + diffuse + specular + emission;
     
-    // ----- COMBINAR ILUMINACIÓN -----
-    vec3 lighting = ambient + diffuse + specular;
-    
-    // ----- OBTENER COLOR DE TEXTURA -----
-    vec4 texColor = texture(Texture, TexCoord);
-    
-    // ----- COLOR FINAL -----
-    FragColor = texColor * vec4(vertexColor * lighting, 1.0);
+    FragColor = vec4(result, 1.0);
 }
