@@ -15,6 +15,8 @@
 
 #include "Shader.h"
 #include "Light.h"
+#include "Material.h"
+#include "Texture.h"
 
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -29,6 +31,7 @@ glm::vec3 groundPos(0.0f, -1.0f, 0.0f);
 glm::vec3 spherePosition(0.0f);
 glm::vec3 sphereScale(1.0f);
 glm::vec3 groundScale(10.0f, 1.0f, 10.0f);
+
 bool sphereExists = true;
 bool groundExists = true;
 
@@ -499,7 +502,7 @@ void initializeDockLayout(ImGuiID dockspaceId)
 {
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::DockBuilderRemoveNode(dockspaceId);
-    ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace | ImGuiDockNodeFlags_NoUndocking);
+    ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
     ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
 
     ImGuiID leftNode = 0;
@@ -640,85 +643,13 @@ int main()
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    GLuint diffuseMap;
-    glGenTextures(1, &diffuseMap);
-    
-    GLuint specularMap;
-    glGenTextures(1, &specularMap);
-    
-    GLuint emissionMap;
-    glGenTextures(1, &emissionMap);
+    Texture diffuseTexture("assets/textures/diffuse_0.png", GL_TEXTURE_2D, 0);
+    Texture specularTexture("assets/textures/specular_0.png", GL_TEXTURE_2D, 1);
+    // Texture emissionTexture("assets/textures/emission_1.png", GL_TEXTURE_2D, 2);
 
-    stbi_set_flip_vertically_on_load(true);
-
-    int width, height, nrChannels;
-    unsigned char *data;
-    GLenum format;
-    
-    data = stbi_load("assets/textures/diffuse_0.png", &width, &height, &nrChannels, 0);
-
-    if (nrChannels == 1)
-        format = GL_RED;
-    else if (nrChannels == 3)
-        format = GL_RGB;
-    else if (nrChannels == 4)
-        format = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D, diffuseMap);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    stbi_image_free(data);
-
-
-    data = stbi_load("assets/textures/specular_0.png", &width, &height, &nrChannels, 0);
-
-    if (nrChannels == 1)
-        format = GL_RED;
-    else if (nrChannels == 3)
-        format = GL_RGB;
-    else if (nrChannels == 4)
-        format = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D, specularMap);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    stbi_image_free(data);
-
-
-    data = stbi_load("assets/textures/emission_0.png", &width, &height, &nrChannels, 0);
-
-    if (nrChannels == 1)
-        format = GL_RED;
-    else if (nrChannels == 3)
-        format = GL_RGB;
-    else if (nrChannels == 4)
-        format = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D, emissionMap);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    stbi_image_free(data);
+    GLuint diffuseMap = diffuseTexture.id;
+    GLuint specularMap = specularTexture.id;
+    // GLuint emissionMap = emissionTexture.id;
 
     proj = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 100.0f);
 
@@ -744,57 +675,26 @@ int main()
     groundModel = glm::translate(glm::mat4(1.0f), groundPos);
     groundModel = glm::scale(groundModel, groundScale);
     
+    Material material(0, 1, 2, 64.0f);
+
     sphereShaderProgram.use();
     sphereShaderProgram.setFloat("radius", 1.0f);
-    sphereShaderProgram.setInt("material.diffuse", 0);
-    sphereShaderProgram.setInt("material.specular", 1);
-    sphereShaderProgram.setInt("material.emission", 2);
-    sphereShaderProgram.setFloat("material.shininess", 64.0f);
+    material.Update(sphereShaderProgram);
+    diffuseTexture.Update(sphereShaderProgram, "material.diffuse");
+    specularTexture.Update(sphereShaderProgram, "material.specular");
+    // emissionTexture.Update(sphereShaderProgram, "material.emission");
 
     shaderProgram.use();
-    shaderProgram.setInt("material.diffuse", 0);
-    shaderProgram.setInt("material.specular", 1);
-    shaderProgram.setInt("material.emission", 2);
-    shaderProgram.setFloat("material.shininess", 64.0f);
+    material.Update(shaderProgram);
+    diffuseTexture.Update(shaderProgram, "material.diffuse");
+    specularTexture.Update(shaderProgram, "material.specular");
+    // emissionTexture.Update(shaderProgram, "material.emission");
 
     lightShaderProgram.use();
     lightShaderProgram.setFloat("radius", 1.0f);
     lightShaderProgram.setFloat("tessellationLevel", 1.0f);
 
     std::vector<Light> lights;
-    lights.emplace_back(
-        LightType::SPOT,
-        glm::vec3(1.2f, 5.0f, 2.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        12.5f, 17.5f,
-        glm::vec3(51.0f),
-        glm::vec3(127.5f, 0.0f, 0.0f),
-        glm::vec3(255.0f, 0.0f, 0.0f),
-        1.0f, 0.045f, 0.0075f
-    );
-
-    lights.emplace_back(
-        LightType::SPOT,
-        glm::vec3(-1.2f, 5.0f, 2.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        12.5f, 17.5f,
-        glm::vec3(51.0f),
-        glm::vec3(0.0f, 127.5f, 0.0f),
-        glm::vec3(0.0f, 255.0f, 0.0f),
-        1.0f, 0.045f, 0.0075f
-    );
-
-    lights.emplace_back(
-        LightType::SPOT,
-        glm::vec3(-1.2f, 5.0f, -2.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        12.5f, 17.5f,
-        glm::vec3(51.0f),
-        glm::vec3(0.0f, 0.0f, 127.5f),
-        glm::vec3(0.0f, 0.0f, 255.0f),
-        1.0f, 0.045f, 0.0075f
-    );
-
     lights.emplace_back(
         LightType::SPOT,
         glm::vec3(1.2f, 5.0f, -2.0f),
@@ -896,14 +796,9 @@ int main()
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightSSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, gpuLights.size() * sizeof(GpuLight), gpuLights.data(), GL_DYNAMIC_DRAW);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specularMap);
-
-        // glActiveTexture(GL_TEXTURE2);
-        // glBindTexture(GL_TEXTURE_2D, emissionMap);
+        diffuseTexture.Bind();
+        specularTexture.Bind();
+        // emissionTexture.Bind();
 
         if (sphereExists)
         {
@@ -919,14 +814,9 @@ int main()
         shaderProgram.setVec3("viewPos", cameraPos);
         shaderProgram.setInt("lightCount", static_cast<int>(lights.size()));
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specularMap);
-
-        // glActiveTexture(GL_TEXTURE2);
-        // glBindTexture(GL_TEXTURE_2D, emissionMap);
+        diffuseTexture.Bind();
+        specularTexture.Bind();
+        // emissionTexture.Bind();
 
         if (groundExists)
         {
