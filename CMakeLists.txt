@@ -10,9 +10,8 @@ find_package(Stb REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
 
-file(GLOB SOURCES "src/*.cpp")
-add_executable(${PROJECT_NAME} ${SOURCES}
-	src/stb_image.cpp)
+file(GLOB SOURCES "src/*.cpp" "THIRD_PARTY/src/*.cpp")
+add_executable(${PROJECT_NAME} ${SOURCES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/build/debug"
@@ -27,7 +26,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 	VERBATIM
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR} include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR} include THIRD_PARTY/include)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glad::glad glfw glm::glm ${OPENGL_LIBRARIES} gdi32 winmm)
 
